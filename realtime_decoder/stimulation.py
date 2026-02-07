@@ -9,6 +9,36 @@ from realtime_decoder import base, utils, messages, binary_record, taskstate
 """Contains objects relevant to detecting if stimulation
 should be given"""
 
+class DummyStimDecider(base.MessageHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+
+    def set_record_writer_from_message(self, *args, **kwargs):
+        return
+
+    def handle_message(self, *args, **kwargs):
+        return
+
+    def next_iter(self, *args, **kwargs):
+        return
+
+    def close(self, *args, **kwargs):
+        return
+
+    def get_records(self):
+        # StimDecider normally returns BinaryRecord registration messages here.
+        # For dummy mode, we return an empty list.
+        return []
+
+    def start_record_writing(self, *args, **kwargs):
+        # no-op for dummy stim
+        return
+
+    def stop_record_writing(self, *args, **kwargs):
+        # no-op for dummy stim
+        return
+
+
 class StimDeciderSendInterface(base.MPISendInterface):
 
     """The interface object a stim decider uses to communicate with

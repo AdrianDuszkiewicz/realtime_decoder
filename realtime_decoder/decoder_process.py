@@ -76,7 +76,8 @@ class SpikeRecvInterface(base.MPIRecvInterface):
                 buf=self._msg_buffer,
                 tag=messages.MPIMessageTag.SPIKE_DECODE_DATA
             )
-
+            #ADRIAN
+            #print("[DEBUG Decoder] Got spike message")
             return msg
 
         return None
@@ -605,6 +606,10 @@ class DecoderManager(base.BinaryRecordBase, base.MessageHandler):
         self._spike_buf[self._sb_ind, 5:] = spike_msg[0]['hist']
         self._sb_ind = (self._sb_ind + 1) % self._spike_buf.shape[0]
 
+        self._current_pos = spike_msg[0]['current_pos'] #ADRIAN add HD here
+        #print(f"[DEBUG Decoder] Current HD: {self._current_pos}") #ADRIAN
+
+
         self._spike_msg_ct += 1
 
         # compute the dropped spikes percentage now since we are at the
@@ -661,7 +666,7 @@ class DecoderManager(base.BinaryRecordBase, base.MessageHandler):
         self._y = yv / self.p['kinematics_sf']
 
         # map position to linear coordinates
-        self._current_pos = self._pos_mapper.map_position(pos_msg)
+        #self._current_pos = self._pos_mapper.map_position(pos_msg)
 
         self._raw_x = pos_msg.x
         self._raw_y = pos_msg.y
@@ -816,10 +821,51 @@ class DecoderManager(base.BinaryRecordBase, base.MessageHandler):
 
         lb = int(timestamp - self.p['tbin_delay_samples'] - self.p['tbin_samples'])
         ub = int(timestamp - self.p['tbin_delay_samples'])
+
+        # ADRIAN
+        debug_messages = False
+        if debug_messages:
+            print(f"[DEBUG Decoder tick] ttl_sample={timestamp} "
+                  f"lb={lb} ub={ub} "
+                  f"delay={self.p['tbin_delay_samples']} "
+                  f"bin_width={self.p['tbin_samples']}")
+            if self._sb_ind > 0:
+                latest_ts = self._spike_buf[self._sb_ind - 1, 0]
+            else:
+                latest_ts = self._spike_buf[-1, 0]  # wraparound case
+            print(f"[DEBUG Decoder Params] "
+                  f"tbin_samples={self.p['tbin_samples']} "
+                  f"tbin_delay_samples={self.p['tbin_delay_samples']} "
+                  f"lb={lb} ub={ub} "
+                  f"latest_ts={latest_ts}")
+            if self._spike_msg_ct > 0:
+                buf_max_ts = self._spike_buf[:self._sb_ind, 0].max()
+                print(f"[DEBUG Decoder bin check] lb={lb} ub={ub} "
+                      f"latest_buf_ts={buf_max_ts} "
+                      f"spike_count_total={self._spike_msg_ct}")
+            else:
+                print(f"[DEBUG Decoder bin check] lb={lb} ub={ub} buffer is empty")
+            if self._spike_msg_ct > 0:
+                buf_ts = self._spike_buf[:self._sb_ind, 0]  # take valid timestamps
+                earliest_ts = float(buf_ts.min())
+                latest_ts = float(buf_ts.max())
+
+                print(f"[DEBUG Decoder buf span] earliest_ts={int(earliest_ts)} "
+                      f"latest_ts={int(latest_ts)} span_samples={int(latest_ts - earliest_ts)} "
+                      f"lb={int(lb)} ub={int(ub)} "
+                      f"overlaps={not (ub <= earliest_ts or lb >= latest_ts)}")
+            else:
+                print(f"[DEBUG Decoder buf span] buffer empty; lb={int(lb)} ub={int(ub)}")
+
+
         spikes_in_bin_mask = np.logical_and(
             self._spike_buf[:, 0] >= lb,
             self._spike_buf[:, 0] < ub
         )
+
+        # ADRIAN
+        #print(f"[DEBUG Decoder] Bin: [{lb}, {ub}), "
+              #f"spikes_in_bin={np.sum(spikes_in_bin_mask)}")
 
         if np.sum(spikes_in_bin_mask) > 0:
 
@@ -893,12 +939,35 @@ class DecoderManager(base.BinaryRecordBase, base.MessageHandler):
         self._posterior_msg[0]['enc_cred_intervals'] = enc_cred_intervals
         self._posterior_msg[0]['enc_argmaxes'] = enc_argmaxes
         self._posterior_msg[0]['spike_count'] = spikes_in_bin_count
+        self._posterior_msg[0]['current_pos'] = self._current_pos
         self.send_interface.send_posterior(
             self._config['rank']['supervisor'][0], self._posterior_msg
         )
         self.send_interface.send_posterior(
             self._config['rank']['gui'][0], self._posterior_msg
         )
+
+        # ADRIAN
+        post = posterior.ravel()
+        nbins = len(post)
+        bin_size = 360.0 / nbins
+        decoded_bin = int(np.argmax(post))
+        decoded_angle = decoded_bin * bin_size
+        true_angle = float(self._current_pos) % 360.0
+        diff = (decoded_angle - true_angle + 180) % 360 - 180
+        err = abs(diff)
+        ts_seconds = timestamp / 20000.0
+        print(
+            f"[DEBUG Decoder] t={ts_seconds:.3f}s",
+            f"n_spikes={np.sum(spikes_in_bin_mask)}|",
+            f"Decoded HD={decoded_angle:.0f}°, "
+            f"true HD={true_angle:.0f}°, "
+            f"error={err:.1f}°"
+        )
+
+        # ADRIAN
+        # print(f"[DEBUG Decoder] Bin: [{lb}, {ub}), "
+        # f"spikes_in_bin={np.sum(spikes_in_bin_mask)}")
 
         if self.p['algorithm'] == 'clusterless_classifier':
             state_prob = posterior.sum(axis=1)

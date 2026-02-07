@@ -757,25 +757,30 @@ class RippleManager(base.BinaryRecordBase, base.MessageHandler):
         """Find out how many LFP samples make up one time bin, where
         the time bin size is a configurable option"""
 
-        ds, rem = divmod(
-            self._config['sampling_rate']['spikes'],
-            self._config['sampling_rate']['lfp']
-        )
-        if rem != 0:
-            raise ValueError(
-                "LFP/Spike downsampling factor is not an integer!"
+        #ADRIAN DEBUG: HARDCODE TO 1 LFP sample
+        hardcode = True
+        if hardcode:
+            n_lfp_samples = 1
+        else:
+            ds, rem = divmod(
+                self._config['sampling_rate']['spikes'],
+                self._config['sampling_rate']['lfp']
             )
+            if rem != 0:
+                raise ValueError(
+                    "LFP/Spike downsampling factor is not an integer!"
+                )
 
-        n_lfp_samples, rem = divmod(
-            self._config['decoder']['time_bin']['samples'],
-            (self._config['sampling_rate']['spikes'] /
-            self._config['sampling_rate']['lfp']
+            n_lfp_samples, rem = divmod(
+                self._config['decoder']['time_bin']['samples'],
+                (self._config['sampling_rate']['spikes'] /
+                self._config['sampling_rate']['lfp']
+                )
             )
-        )
-        if rem != 0:
-            raise ValueError(
-                "Number of LFP samples per time bin is not an integer!"
-            )
+            if rem != 0:
+                raise ValueError(
+                    "Number of LFP samples per time bin is not an integer!"
+                )
 
         return n_lfp_samples
 

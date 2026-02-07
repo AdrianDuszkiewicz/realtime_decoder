@@ -14,6 +14,7 @@ realtime_decoder/messages.py
 realtime_decoder/position.py
 realtime_decoder/ripple_process.py
 realtime_decoder/stimulation.py
+realtime_decoder/taskstate.py
 realtime_decoder/transitions.py
 realtime_decoder/trodesnet.py
 realtime_decoder/utils.py

@@ -232,7 +232,7 @@ class Encoder(base.LoggingClass):
         hist, hist_edges = np.histogram(
             a=positions,
             bins=self._pos_bin_struct.pos_bin_edges,
-            weights=weights, normed=False
+            weights=weights, density=False
         )
 
         hist += 0.0000001
@@ -243,10 +243,20 @@ class Encoder(base.LoggingClass):
 
         # note: if pos_bin_delta is not one, this will not sum to 1
         hist /= (np.sum(hist) * self._pos_bin_struct.pos_bin_delta)
+        #hist /= np.sum(hist) #ADRIAN DEBUG
 
         # print("")
         # print(hist)
         # print("")
+
+        # 🔍 ADRIAN DEBUG
+        #print(
+            #f"[get_joint_prob] bins={len(hist)}, "
+            #f"sum={np.sum(hist):.4f}, "
+            #f"max={np.max(hist):.4f}, "
+            #f"argmax_bin={np.argmax(hist)}, "
+            #f"bin_delta={self._pos_bin_struct.pos_bin_delta:.4f} "
+        #)
 
         return EncoderJointProbEstimate(
             np.sum(in_range), weights, positions, hist
@@ -468,6 +478,16 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
         spike_timestamp = spike_msg.timestamp
         elec_grp_id = spike_msg.elec_grp_id
 
+        # ADRIAN DEBUG: log all spikes received by encoder
+        debug_messages = False
+        if debug_messages:
+            if not hasattr(self, "_count_spikes"):
+                self._count_spikes = 0
+            self._count_spikes += 1
+            if self._count_spikes % 100 == 0:
+                print(f"[DEBUG Encoder] Received {self._count_spikes} spikes "
+                      f"(ts={spike_timestamp}, elec_grp_id={elec_grp_id})")
+
         # zero out dead channels
         if elec_grp_id in self._dead_channels:
             dch  = self._dead_channels[elec_grp_id]
@@ -488,6 +508,11 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
                 mark_vec
             )
             t_end_kde = time.time_ns()
+
+            #ADRIAN
+            #print(f"[DEBUG process_spike] ts={spike_timestamp / 20000}, max_amp={max(mark_vec)}, "
+                  #f"spk_amp_thresh={self.p['spk_amp']}, pos={self._current_pos}, "
+                  #f"joint_prob_obj={'yes' if joint_prob_obj else 'no'}")
 
             # determine if encoding spike
             encoding_spike = self._is_training_epoch()
@@ -511,6 +536,9 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
                 t_start_enc_send = self._spike_msg['send_time']
                 self.send_interface.send_joint_prob(decoder_rank, self._spike_msg)
                 t_end_enc_send = time.time_ns()
+
+                #ADRIAN
+                #print(f"[DEBUG Encoder] Sending spike ts={spike_timestamp}, hd={self._current_pos}")
 
                 self._record_timings(
                     elec_grp_id, spike_timestamp,
@@ -572,6 +600,8 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
     def _process_pos(self, pos_msg):
         """Process a new position data point"""
 
+        #print(f"[DEBUG Encoder] Retrieving new position data point") #ADRIAN
+
         if pos_msg.timestamp <= self._pos_timestamp:
             self.class_log.warning(
                 f"Duplicate or backwards timestamp. New timestamp: {pos_msg.timestamp}, "
@@ -589,8 +619,8 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
 
         #################################################################################################################
         # debugging, remove when done
-        if pos_msg.x == 0:
-            self.class_log.info(f"{pos_msg.timestamp} got a 0 xloc, {pos_msg.x}, {pos_msg.y}, {pos_msg.x2}, {pos_msg.y2}")
+        #if pos_msg.x == 0:
+            #self.class_log.info(f"{pos_msg.timestamp} got a 0 xloc, {pos_msg.x}, {pos_msg.y}, {pos_msg.x2}, {pos_msg.y2}")
         ##################################################################################################################
 
         # calculate velocity using the midpoints
@@ -606,8 +636,15 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
             smooth_speed=self.p['smooth_speed']
         )
 
+        # ADRIAN DEBUG:
+        self._current_vel = 10.0  # or whatever value you want
+
         # map position to linear coordinates
-        self._current_pos = self._pos_mapper.map_position(pos_msg)
+        #self._current_pos = self._pos_mapper.map_position(pos_msg)
+        self._current_pos = pos_msg.position #ADRIAN overriding the mapper
+
+        #ADRIAN DEBUG
+        #print(f"[DEBUG Encoder] Got new pos_msg ts={pos_msg.timestamp}, HD={self._current_pos}")
 
         #####################################################################################################
         # For testing, remove when finalized
@@ -752,7 +789,7 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
     def _set_up_trodes(self, trodes:List[int]):
         """Set up data objects given a list of electrode groups
         this object will be handling/managing"""
-
+        print(f"[EncoderProcess] Setting up trodes: {trodes}") #ADRIAN
         for trode in trodes:
             self._spikes_interface.register_datatype_channel(trode)
 

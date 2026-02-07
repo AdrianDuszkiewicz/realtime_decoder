@@ -1420,8 +1420,8 @@ class DecodingResultsWindow(QMainWindow):
 
         algorithm = self._config['algorithm']
         state_labels = self._config[algorithm]['state_labels']
-        state_labels.append(' ')
-        state_labels.append('thresh')
+        #state_labels.append(' ') # ADRIAN
+        #state_labels.append('thresh') # ADRIAN
 
         print(f"state_labels: {state_labels}")
         S = len(state_labels)
@@ -1449,7 +1449,8 @@ class DecodingResultsWindow(QMainWindow):
         self._data = {}
         self._data['lk'] = [np.zeros((B, N)) for _ in range(num_plots)]
         self._data['post'] = [np.zeros((B, N)) for _ in range(num_plots)]
-        self._data['state'] = [np.zeros((S, N)) for _ in range(num_plots)]
+        #self._data['state'] = [np.zeros((S, N)) for _ in range(num_plots)]
+        self._data['state'] = [np.zeros((3, N)) for _ in range(num_plots)] #ADRIAN
         self._data['ind'] = [0] * num_plots
 
         # used for likelihood/posterior plots
@@ -1462,7 +1463,7 @@ class DecodingResultsWindow(QMainWindow):
 
         self._setup_lk_plots(num_plots, bin_edges, arm_coords)
         self._setup_posterior_plots(num_plots, bin_edges, arm_coords)
-        self._setup_state_prob_plots(num_plots, state_labels, state_colors)
+        self._setup_hd_plots(num_plots, state_labels, state_colors)
 
         num_xticks = self._config['gui']['num_xticks']
         self._set_plot_ticks(num_plots, dt, N, num_xticks)
@@ -1592,38 +1593,38 @@ class DecodingResultsWindow(QMainWindow):
                 )
 
     # TODO(DS): Change this to a consensus ripple power 
-    def _setup_state_prob_plots(self, num_plots, labels, colors):
-        """Set up the plots visualizing state probabilities"""
+    def _setup_hd_plots(self, num_plots, labels, colors):
+        """Set up the plots for decoded vs real head direction"""
 
         for ii in range(num_plots):
-
             dec_rank = self._config['rank']['decoders'][ii]
 
-            # create plots/plot properties
+            # create plot
             self._plots['state'][ii] = self._graphics_widget.addPlot(
                 2, ii, 1, 1,
-                #title=f'State Probability (Rank {dec_rank})',
-                title=f'Ripple power (Rank {dec_rank})',
+                title=f'Head Direction (Rank {dec_rank})',
                 labels={
-                    'left': 'Ripple power (z-score)',
+                    'left': 'Head Direction (deg)',
                     'bottom': 'Time (sec)',
                 }
             )
             self._plots['state'][ii].addLegend(offset=None)
-            self._plots['state'][ii].setRange(yRange=[-2, 7])
+            self._plots['state'][ii].setRange(yRange=[0, 360])
             self._plots['state'][ii].setMenuEnabled(False)
 
-            # add plot items
-            for label, color in zip(labels, colors):
-                self._plot_items['state']['data'][ii].append(
-                    pg.PlotDataItem(
-                        np.zeros(self._num_time_bins), pen=color,
-                        width=10, name=label
-                    )
-                )
-                self._plots['state'][ii].addItem(
-                    self._plot_items['state']['data'][ii][-1]
-                )
+            # add decoded HD trace (yellow)
+            decoded_item = pg.PlotDataItem(
+                np.zeros(self._num_time_bins), pen='y', width=2, name="Decoded HD"
+            )
+            self._plot_items['state']['data'][ii].append(decoded_item)
+            self._plots['state'][ii].addItem(decoded_item)
+
+            # add real HD trace (cyan)
+            real_item = pg.PlotDataItem(
+                np.zeros(self._num_time_bins), pen='c', width=2, name="Real HD"
+            )
+            self._plot_items['state']['data'][ii].append(real_item)
+            self._plots['state'][ii].addItem(real_item)
 
     def _update(self):
         """Receive any new messages and potentially update plot data"""
@@ -1656,11 +1657,9 @@ class DecodingResultsWindow(QMainWindow):
                 post.T * 255, levels=[0, 255]
             )
 
-            for state_ind in range(self._num_states):
-                state_data = self._data['state'][ii][state_ind]
-                self._plot_items['state']['data'][ii][state_ind].setData(
-                    state_data
-                )
+            for trace_ind, item in enumerate(self._plot_items['state']['data'][ii]):
+                state_data = self._data['state'][ii][trace_ind]
+                item.setData(state_data)
 
     def handle_message(self, msg, mpi_status):
         """Process a (non neural data) received MPI message"""
@@ -1728,6 +1727,9 @@ class DecodingResultsWindow(QMainWindow):
             msg[0]['posterior'], axis=0
         )
 
+        #ADRIAN
+        #print("[DEBUG Posterior array]", np.array2string(msg[0]['posterior'], precision=3, suppress_small=True))
+
         ''' #NOTE(DS): original state function from Josh and Mike
         self._data['state'][plot_ind][:, ind] = np.nansum(
             msg[0]['posterior'], axis=1
@@ -1735,12 +1737,29 @@ class DecodingResultsWindow(QMainWindow):
         '''
         #NOTE(DS): now i want to plot ripple power instead
 
-        self._data['state'][plot_ind][1, :] = -3*np.ones_like(self._data['state'][plot_ind][1, :])   #NOTE(DS): current time
-        self._data['state'][plot_ind][2, ind] = self.ripple_threshold      
+        #self._data['state'][plot_ind][1, :] = -3*np.ones_like(self._data['state'][plot_ind][1, :])   #NOTE(DS): current time
+        #self._data['state'][plot_ind][2, ind] = self.ripple_threshold
 
-        self._data['state'][plot_ind][0, ind] =  self._last_ripple_power # ripple
+        #self._data['state'][plot_ind][0, ind] =  self._last_ripple_power # ripple
         #self._data['state'][plot_ind][1, ind] =  self._last_ripple_power # ripple
-        self._data['state'][plot_ind][1, ind] =  8
+        #self._data['state'][plot_ind][1, ind] =  8
+
+        post = msg[0]['posterior']
+        decoded_bin = np.argmax(post)  # MAP estimate
+        bin_edges = np.linspace(
+            self._config['encoder']['position']['lower'],
+            self._config['encoder']['position']['upper'],
+            self._config['encoder']['position']['num_bins'] + 1
+        )
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        decoded_angle = bin_centers[decoded_bin]
+
+        ind = self._data['ind'][plot_ind]
+        self._data['state'][plot_ind][0, ind] = decoded_angle
+        self._data['state'][plot_ind][1, ind] = msg[0]['current_pos']  # real HD
+
+
+        #print(f"real HD={msg[0]['current_pos']:.2f} ") #ADRIAN
 
 
         # update index for next data point to be stored at
@@ -1748,6 +1767,8 @@ class DecodingResultsWindow(QMainWindow):
             (self._data['ind'][plot_ind] + 1) %
             self._num_time_bins
         )
+
+
 
     def _update_dropped_spikes(self, msg, mpi_status):
         """Update data keeping track of dropped spikes"""

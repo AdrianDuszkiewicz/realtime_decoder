@@ -241,6 +241,7 @@ def get_dtype(msg_type:str, *, config:Dict={}):
             ('posterior', '=f8', (num_states, num_bins)),
             ('likelihood', '=f8', (num_bins, )),
             ('velocity', '=f8'),
+            ('current_pos', '=f8'),  # ← NEW: true head direction / mapped pos
             ('cred_int_post', '=i4'),
             ('cred_int_lk', '=i4'),
             ('enc_cred_intervals', '=i4', (num_buff, )),
