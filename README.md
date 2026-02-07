@@ -1,6 +1,6 @@
 # Realtime Decoder
 
-Fork of realtime_decoder made by the Frank lab, adapted to work with OpenEphys [WORK IN PROGRESS}
+Fork of realtime_decoder made by the Frank lab, adapted to work with OpenEphys [WORK IN PROGRESS]
 
 
 
