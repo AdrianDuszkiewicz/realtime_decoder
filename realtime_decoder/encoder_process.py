@@ -10,7 +10,6 @@ from typing import Sequence, List
 from realtime_decoder import (
     base, utils, position, datatypes, messages, binary_record, taskstate
 )
-
 ####################################################################################
 # Data classes
 ####################################################################################
@@ -479,7 +478,7 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
         elec_grp_id = spike_msg.elec_grp_id
 
         # ADRIAN DEBUG: log all spikes received by encoder
-        debug_messages = False
+        debug_messages = True
         if debug_messages:
             if not hasattr(self, "_count_spikes"):
                 self._count_spikes = 0

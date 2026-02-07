@@ -331,11 +331,18 @@ class RippleManager(base.BinaryRecordBase, base.MessageHandler):
             self._lfp_timestamp = msg_timestamp
             self._lfp_count += 1
 
+        # DEBUG ADRIAN: Timestamp-only mode: skip *everything* else
+        #if self._config["ripples"].get("timestamp_only", False):
+        #    if (
+        #            self.p["send_lfp_timestamp"] and
+        #            self._lfp_count % self.p["lfp_samples_per_time_bin"] == 0
+        #    ):
+        #        self._update_decoder()
+        #    return
+
         # get envelope
         filtered_data, env = self._envelope_estimator.add_new_data(msg_data)
         cons_env = np.mean(env)
-
-
 
         # updates stats
         if (not self.p['freeze_stats']) and (self._task_state == 1):
