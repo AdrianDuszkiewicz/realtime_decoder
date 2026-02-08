@@ -136,13 +136,14 @@ def plot_decoder_hd(
     axes[1].legend(loc="upper right")
 
     fig.tight_layout()
-    if csv_path:
-        csv_df = df.copy()
-        csv_df["decoded_angle"] = decoded_angle
-        csv_df["real_angle"] = real_angle
-        csv_df["hd_diff"] = diff
-        csv_df["time_sec"] = time_sec
-        csv_df.to_csv(csv_path, index=False)
+    if csv_path is None:
+        csv_path = os.path.join(save_dir, f"{prefix}_hd.csv")
+    csv_df = df.copy()
+    csv_df["decoded_angle"] = decoded_angle
+    csv_df["real_angle"] = real_angle
+    csv_df["hd_diff"] = diff
+    csv_df["time_sec"] = time_sec
+    csv_df.to_csv(csv_path, index=False)
     if show:
         plt.show()
     return fig, axes
@@ -200,7 +201,7 @@ def main():
     parser.add_argument(
         "--csv-path",
         default=None,
-        help="Optional path to save decoded variables as CSV (default: None)"
+        help="Optional path to save decoded variables as CSV (default: save_dir/<prefix>_hd.csv)"
     )
     args = parser.parse_args()
 

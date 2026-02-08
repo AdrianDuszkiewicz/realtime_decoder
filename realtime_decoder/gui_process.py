@@ -1522,6 +1522,8 @@ class DecodingResultsWindow(QMainWindow):
 
     def _setup_lk_plots(self, num_plots, bin_edges, arm_coords):
         """Set up the plots visualizing likelihoods"""
+        self._lk_y_min = float(bin_edges[0])
+        self._lk_y_span = float(bin_edges[-1] - bin_edges[0])
 
         for ii in range(num_plots):
 
@@ -1565,6 +1567,8 @@ class DecodingResultsWindow(QMainWindow):
 
     def _setup_posterior_plots(self, num_plots, bin_edges, arm_coords):
         """Set up the plots visualizing the posterior"""
+        self._post_y_min = float(bin_edges[0])
+        self._post_y_span = float(bin_edges[-1] - bin_edges[0])
 
         for ii in range(num_plots):
 
@@ -1698,11 +1702,17 @@ class DecodingResultsWindow(QMainWindow):
             self._plot_items['lk']['image'][ii].setImage(
                 lk.T * 255, levels=[0, 255]
             )
+            self._plot_items['lk']['image'][ii].setRect(
+                0, self._lk_y_min, self._num_time_bins, self._lk_y_span
+            )
 
             post = self._data['post'][ii]
             post[np.isnan(post)] = 0
             self._plot_items['post']['image'][ii].setImage(
                 post.T * 255, levels=[0, 255]
+            )
+            self._plot_items['post']['image'][ii].setRect(
+                0, self._post_y_min, self._num_time_bins, self._post_y_span
             )
 
             for trace_ind, item in enumerate(self._plot_items['state']['data'][ii]):

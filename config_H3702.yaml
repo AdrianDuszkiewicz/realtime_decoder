@@ -31,7 +31,7 @@ openephys:
   lfp_addr: "tcp://127.0.0.1:1030"
 
 encoder:
-  spk_amp: 10
+  spk_amp: 8 # default 10
   mark_dim: 4
   vel_thresh: 2
   timings_bufsize: 50000   # ← new
@@ -45,7 +45,7 @@ encoder:
     arm_ids: [ 0 ]        # ← must be list of ints
     arm_coords: [ [ 0, 59] ]  # ← Nx2; covers all bins for HD, [0 59]
   mark_kernel:
-    std: 20.0
+    std: 12.0 # default 20
     use_filter: false
     n_std: 3
     n_marks_min: 1
