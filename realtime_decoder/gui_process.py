@@ -1356,6 +1356,7 @@ class DecodingResultsWindow(QMainWindow):
         self._timer.timeout.connect(self._update)
 
         self._elapsed_timer = QElapsedTimer()
+        self._clock_timer = QElapsedTimer()
         self._refresh_msec = int(
             np.round(1/self._config['gui']['refresh_rate']*1000)
         )
@@ -1417,6 +1418,9 @@ class DecodingResultsWindow(QMainWindow):
         self._num_time_bins = N
 
         num_plots = len(self._config['rank']['decoders'])
+        self._time_label = pg.LabelItem(justify="left")
+        self._time_label.setText("Time elapsed: 00:00:00")
+        self._graphics_widget.addItem(self._time_label, row=0, col=0, colspan=num_plots)
 
         algorithm = self._config['algorithm']
         state_labels = self._config[algorithm]['state_labels']
@@ -1435,6 +1439,7 @@ class DecodingResultsWindow(QMainWindow):
         self._plots['lk'] = [None] * num_plots
         self._plots['post'] = [None] * num_plots
         self._plots['state'] = [None] * num_plots
+        self._plots['diff'] = [None] * num_plots
 
         # plot items
         self._plot_items = {}
@@ -1444,6 +1449,8 @@ class DecodingResultsWindow(QMainWindow):
         self._plot_items['post']['image'] = [None] * num_plots
         self._plot_items['state'] = {}
         self._plot_items['state']['data'] = [ [] for _ in range(num_plots)]
+        self._plot_items['diff'] = {}
+        self._plot_items['diff']['data'] = [None] * num_plots
 
         # data
         self._data = {}
@@ -1451,6 +1458,7 @@ class DecodingResultsWindow(QMainWindow):
         self._data['post'] = [np.zeros((B, N)) for _ in range(num_plots)]
         #self._data['state'] = [np.zeros((S, N)) for _ in range(num_plots)]
         self._data['state'] = [np.zeros((3, N)) for _ in range(num_plots)] #ADRIAN
+        self._data['diff'] = [np.zeros(N) for _ in range(num_plots)]
         self._data['ind'] = [0] * num_plots
 
         # used for likelihood/posterior plots
@@ -1464,6 +1472,7 @@ class DecodingResultsWindow(QMainWindow):
         self._setup_lk_plots(num_plots, bin_edges, arm_coords)
         self._setup_posterior_plots(num_plots, bin_edges, arm_coords)
         self._setup_hd_plots(num_plots, state_labels, state_colors)
+        self._setup_hd_diff_plots(num_plots)
 
         num_xticks = self._config['gui']['num_xticks']
         self._set_plot_ticks(num_plots, dt, N, num_xticks)
@@ -1509,6 +1518,7 @@ class DecodingResultsWindow(QMainWindow):
             self._plots['lk'][ii].getAxis("bottom").setTicks(tick_data)
             self._plots['post'][ii].getAxis("bottom").setTicks(tick_data)
             self._plots['state'][ii].getAxis("bottom").setTicks(tick_data)
+            self._plots['diff'][ii].getAxis("bottom").setTicks(tick_data)
 
     def _setup_lk_plots(self, num_plots, bin_edges, arm_coords):
         """Set up the plots visualizing likelihoods"""
@@ -1519,7 +1529,7 @@ class DecodingResultsWindow(QMainWindow):
 
             # create plots/plot properties
             self._plots['lk'][ii] = self._graphics_widget.addPlot(
-                0, ii, 1, 1,
+                1, ii, 1, 1,
                 title=f'Likelihood (Rank {dec_rank})',
                 labels={
                     'left': 'Position bin',
@@ -1527,6 +1537,8 @@ class DecodingResultsWindow(QMainWindow):
                 }
             )
             self._plots['lk'][ii].setMenuEnabled(False)
+            self._plots['lk'][ii].setRange(yRange=[0, 360])
+            self._set_y_ticks(self._plots['lk'][ii], 0, 360, 90)
 
             # add plot items
             for lower_bin, upper_bin in arm_coords:
@@ -1560,7 +1572,7 @@ class DecodingResultsWindow(QMainWindow):
 
             # create plot/plot properties
             self._plots['post'][ii] = self._graphics_widget.addPlot(
-                1, ii, 1, 1,
+                2, ii, 1, 1,
                 title=f'Marginalized Posterior (Rank {dec_rank})',
                 labels={
                     'left': 'Position bin',
@@ -1568,6 +1580,8 @@ class DecodingResultsWindow(QMainWindow):
                 }
             )
             self._plots['post'][ii].setMenuEnabled(False)
+            self._plots['post'][ii].setRange(yRange=[0, 360])
+            self._set_y_ticks(self._plots['post'][ii], 0, 360, 90)
 
             # add plot items
             for lower_bin, upper_bin in arm_coords:
@@ -1601,7 +1615,7 @@ class DecodingResultsWindow(QMainWindow):
 
             # create plot
             self._plots['state'][ii] = self._graphics_widget.addPlot(
-                2, ii, 1, 1,
+                3, ii, 1, 1,
                 title=f'Head Direction (Rank {dec_rank})',
                 labels={
                     'left': 'Head Direction (deg)',
@@ -1611,6 +1625,7 @@ class DecodingResultsWindow(QMainWindow):
             self._plots['state'][ii].addLegend(offset=None)
             self._plots['state'][ii].setRange(yRange=[0, 360])
             self._plots['state'][ii].setMenuEnabled(False)
+            self._set_y_ticks(self._plots['state'][ii], 0, 360, 90)
 
             # add decoded HD trace (yellow)
             decoded_item = pg.PlotDataItem(
@@ -1625,6 +1640,38 @@ class DecodingResultsWindow(QMainWindow):
             )
             self._plot_items['state']['data'][ii].append(real_item)
             self._plots['state'][ii].addItem(real_item)
+
+    def _setup_hd_diff_plots(self, num_plots):
+        """Set up plots for decoded vs real head direction difference"""
+
+        for ii in range(num_plots):
+            dec_rank = self._config['rank']['decoders'][ii]
+
+            self._plots['diff'][ii] = self._graphics_widget.addPlot(
+                4, ii, 1, 1,
+                title=f'HD Diff (Rank {dec_rank})',
+                labels={
+                    'left': 'Diff (deg)',
+                    'bottom': 'Time (sec)',
+                }
+            )
+            self._plots['diff'][ii].setMenuEnabled(False)
+            self._plots['diff'][ii].setRange(yRange=[-180, 180])
+            self._set_y_ticks(self._plots['diff'][ii], -180, 180, 90)
+
+            diff_item = pg.PlotDataItem(
+                np.zeros(self._num_time_bins), pen='m', width=2, name="HD Diff"
+            )
+            self._plot_items['diff']['data'][ii] = diff_item
+            self._plots['diff'][ii].addItem(diff_item)
+
+    def _set_y_ticks(self, plot, start, end, step):
+        """Set evenly spaced y-axis ticks."""
+
+        ticks = np.arange(start, end + step, step)
+        tick_labels = [str(int(tick)) for tick in ticks]
+        tick_data = [[(tick, label) for tick, label in zip(ticks, tick_labels)]]
+        plot.getAxis("left").setTicks(tick_data)
 
     def _update(self):
         """Receive any new messages and potentially update plot data"""
@@ -1642,6 +1689,7 @@ class DecodingResultsWindow(QMainWindow):
     #NOTE(DS): This updates the display data
     def _update_display_data(self):
         """Update plot data"""
+        self._update_time_display()
 
         # set plot data
         for ii in range(len(self._plots['lk'])):
@@ -1660,6 +1708,16 @@ class DecodingResultsWindow(QMainWindow):
             for trace_ind, item in enumerate(self._plot_items['state']['data'][ii]):
                 state_data = self._data['state'][ii][trace_ind]
                 item.setData(state_data)
+            self._plot_items['diff']['data'][ii].setData(self._data['diff'][ii])
+
+    def _update_time_display(self):
+        elapsed_sec = int(self._clock_timer.elapsed() / 1000)
+        hours = elapsed_sec // 3600
+        minutes = (elapsed_sec % 3600) // 60
+        seconds = elapsed_sec % 60
+        self._time_label.setText(
+            f"Time elapsed: {hours:02d}:{minutes:02d}:{seconds:02d}"
+        )
 
     def handle_message(self, msg, mpi_status):
         """Process a (non neural data) received MPI message"""
@@ -1757,6 +1815,8 @@ class DecodingResultsWindow(QMainWindow):
         ind = self._data['ind'][plot_ind]
         self._data['state'][plot_ind][0, ind] = decoded_angle
         self._data['state'][plot_ind][1, ind] = msg[0]['current_pos']  # real HD
+        raw_diff = decoded_angle - msg[0]['current_pos']
+        self._data['diff'][plot_ind][ind] = ((raw_diff + 180) % 360) - 180
 
 
         #print(f"real HD={msg[0]['current_pos']:.2f} ") #ADRIAN
@@ -1834,6 +1894,7 @@ class DecodingResultsWindow(QMainWindow):
                 kind='information'
             )
         self._elapsed_timer.start()
+        self._clock_timer.start()
         self._timer.start()
         self._dialog.run()
 

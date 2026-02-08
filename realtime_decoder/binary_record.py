@@ -450,7 +450,7 @@ class BinaryRecordsFileReader(logging_base.LoggingClass):
         for rec_id, table in panda_frames.items():
             if len(table) > 0:
                 for col_name in table:
-                    if table[col_name].dtype == np.object:
+                    if table[col_name].dtype == object:
                         if isinstance(table[col_name].iloc[0], bytes):
                             table[col_name] = table[col_name].apply(self._bytes_to_string)
 

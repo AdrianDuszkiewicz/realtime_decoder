@@ -17,11 +17,18 @@ from realtime_decoder.datatypes import (
 # -------------------
 # Head-direction CSV
 # -------------------
-csv_path = "/home/adrian/EphysData/A3706-200313/OpenEphys2/Tracking.csv"
-df = pd.read_csv(csv_path, usecols=[0, 1]).ffill().bfill()
-hd_samples = df.iloc[:, 0].astype(int).to_numpy()
-hd_values = (np.degrees(df.iloc[:, 1].to_numpy()) + 360) % 360
+hd_samples = None
+hd_values = None
 hd_index = None
+_hd_warned = False
+
+
+def load_hd_csv(csv_path):
+    global hd_samples, hd_values, hd_index
+    df = pd.read_csv(csv_path, usecols=[0, 1]).ffill().bfill()
+    hd_samples = df.iloc[:, 0].astype(int).to_numpy()
+    hd_values = (np.degrees(df.iloc[:, 1].to_numpy()) + 360) % 360
+    hd_index = None
 
 # -------------------
 # Spike packet decoding
@@ -135,8 +142,18 @@ def parse_ttl(data, sample_rate=20000):
 # -------------------
 class OEClient:
     # MAKE SURE THE ADDRESS MATCHES THAT IN OPENEPHYS FALCON
-    def __init__(self, addr="tcp://127.0.0.1:5557", lfp_addr="tcp://127.0.0.1:5555", sample_rate=20000):
+    def __init__(
+            self,
+            addr="tcp://127.0.0.1:5557",
+            lfp_addr="tcp://127.0.0.1:5555",
+            sample_rate=20000,
+            csv_path=None,
+    ):
+
         self.sample_rate = sample_rate
+        if csv_path:
+            load_hd_csv(csv_path)
+
         ctx = zmq.Context.instance()
 
         # spikes/TTL
@@ -172,6 +189,12 @@ class OEClient:
                 if ev is None or ev["state"] == 0:
                     return None
                 if ev["line"] == 4:
+                    global _hd_warned
+                    if hd_samples is None:
+                        if not _hd_warned:
+                            #print("[OEClient] Head-direction CSV not loaded; set openephys.csv_path in config.")
+                            _hd_warned = True
+                        return None
                     if hd_index is None:
                         hd_index = np.searchsorted(hd_samples, ev["sample_num"])
                         #print(f"[OEClient] Head direction index init at {hd_index}")
@@ -183,7 +206,7 @@ class OEClient:
         if self.lfp_socket in socks:  # LFP continuous data
             data = self.lfp_socket.recv()
             ev = parse_lfp(data)
-            print(f"[DEBUG OEClient] Got LFP packet sample_num={ev['sample_num']} n_samples={ev['n_samples']}")
+            #print(f"[DEBUG OEClient] Got LFP packet sample_num={ev['sample_num']} n_samples={ev['n_samples']}")
             return ev
 
         return None
@@ -210,8 +233,11 @@ class OEDataReceiver(DataSourceReceiver):
 
         self.client = OEClient(
             addr=config["openephys"].get("addr", "tcp://127.0.0.1:5557"),
+            lfp_addr=config["openephys"].get("lfp_addr", "tcp://127.0.0.1:5555"),
             sample_rate=config["sampling_rate"]["spikes"],
+            csv_path=config["openephys"].get("csv_path"),
         )
+
         self.start = True
 
     def __next__(self):
@@ -250,6 +276,8 @@ class OEDataReceiver(DataSourceReceiver):
         elif self.datatype == Datatypes.LINEAR_POSITION:
             ev = self.client.next_event()   # from Event Broadcaster TTLs
             if isinstance(ev, tuple) and ev[0] == "hd":
+                if hd_samples is None:
+                    return None
                 sample_num = ev[1]
                 idx = np.searchsorted(hd_samples, sample_num, side="left")
                 hd_val = hd_values[idx] if idx < len(hd_values) else 0.0

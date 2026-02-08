@@ -8,7 +8,7 @@ rank:
 
 files:
   output_dir: ./output
-  prefix: demo
+  prefix: 'offline'
   rec_postfix: bin_rec      # required by MainManager
   timing_postfix: timing    # also expected in some places
 
@@ -109,7 +109,7 @@ gui:
   colormap: 'viridis'
   send_interval: 0
   refresh_rate: 25
-  trace_length: 2
+  trace_length: 20
   state_colors: ['#4c72b0']
   num_xticks: 5
   likelihood:
@@ -156,7 +156,11 @@ openephys:
   config_file: dummy.trodesconf
   taskstate_file: dummy_taskstate.txt
   instructive_file: dummy_instructive.txt
+  #csv_path: '/home/adrian/EphysData/A3707-200318/OpenEphys2/Tracking.csv'
+  csv_path: '/home/adrian/EphysData/A3706-200313/OpenEphys2/Tracking.csv'
   voltage_scaling_factor: 1
+  addr: "tcp://127.0.0.1:3333"
+  lfp_addr: "tcp://127.0.0.1:4444"
 
 cred_interval:
   val: 0.5
@@ -174,3 +178,6 @@ display:
     position: 5000
   ripples:
     lfp: 100000
+
+  openephys:
+
