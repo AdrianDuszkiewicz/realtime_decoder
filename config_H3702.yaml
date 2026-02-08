@@ -28,7 +28,7 @@ openephys:
 
   voltage_scaling_factor: 1
   addr: "tcp://127.0.0.1:1026"
-  lfp_addr: "tcp://127.0.0.1:1025"
+  lfp_addr: "tcp://127.0.0.1:1030"
 
 encoder:
   spk_amp: 10

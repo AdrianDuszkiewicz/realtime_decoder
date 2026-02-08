@@ -198,6 +198,12 @@ class OEClient:
                     if hd_index is None:
                         hd_index = np.searchsorted(hd_samples, ev["sample_num"])
                         #print(f"[OEClient] Head direction index init at {hd_index}")
+                    hd_time_sec = ev["sample_num"] / float(self.sample_rate)
+                    hd_idx = np.searchsorted(hd_samples, ev["sample_num"])
+                    hd_val = hd_values[hd_idx] if hd_idx < len(hd_values) else float("nan")
+                    #print(
+                    #    f"[DEBUG OEClient] HD TTL time={hd_time_sec:.3f}s hd={hd_val:.2f}"
+                    #)
                     return ("hd", ev["sample_num"])
                 elif ev["line"] == 3:
                     return ("lfp", ev["sample_num"])
@@ -206,7 +212,12 @@ class OEClient:
         if self.lfp_socket in socks:  # LFP continuous data
             data = self.lfp_socket.recv()
             ev = parse_lfp(data)
-            #print(f"[DEBUG OEClient] Got LFP packet sample_num={ev['sample_num']} n_samples={ev['n_samples']}")
+            lfp_rate = ev.get("sample_rate") or self.sample_rate
+            lfp_time_sec = ev["sample_num"] / float(lfp_rate)
+            #print(
+                #f"[DEBUG OEClient] LFP time={lfp_time_sec:.3f}s "
+               # f"sample_num={ev['sample_num']} n_samples={ev['n_samples']}"
+            #)
             return ev
 
         return None

@@ -9,20 +9,33 @@ import matplotlib.pyplot as plt
 from realtime_decoder import binary_record
 
 
-def _find_rec_file(save_dir, prefix, manager_label, postfix):
-    pattern = os.path.join(save_dir, f"{prefix}.*.{manager_label}.{postfix}")
+def _find_rec_file(save_dir, prefix, manager_label, postfix, rank=None):
+    if prefix:
+        if rank is None:
+            pattern = os.path.join(save_dir, f"{prefix}.*.{manager_label}.{postfix}")
+        else:
+            pattern = os.path.join(save_dir, f"{prefix}.{rank}.{manager_label}.{postfix}")
+    else:
+        if rank is None:
+            pattern = os.path.join(save_dir, f"*.{manager_label}.{postfix}")
+        else:
+            pattern = os.path.join(save_dir, f"*.{rank}.{manager_label}.{postfix}")
     matches = sorted(glob.glob(pattern))
     if not matches:
         raise FileNotFoundError(
             f"No rec files found for pattern: {pattern}"
         )
-    if len(matches) > 1:
+    if prefix is None and len(matches) > 1:
+        raise ValueError(
+            f"Multiple rec files found in {save_dir}; specify prefix."
+        )
+    if prefix and len(matches) > 1:
         print("Found multiple files, using the first one:")
         print(f"  {matches[0]}")
     return matches[0]
 
 
-def _parse_rank_and_digits(filepath, manager_label, postfix):
+def _parse_prefix_rank_and_digits(filepath, manager_label, postfix):
     name = os.path.basename(filepath)
     parts = name.split(".")
     if len(parts) < 4:
@@ -31,7 +44,8 @@ def _parse_rank_and_digits(filepath, manager_label, postfix):
         raise ValueError(f"Unexpected rec filename format: {name}")
     rank_str = parts[-3]
     num_digits = len(rank_str)
-    return int(rank_str), num_digits
+    prefix = ".".join(parts[:-3])
+    return prefix, int(rank_str), num_digits
 
 
 def _extract_pos_columns(columns):
@@ -58,7 +72,7 @@ def _extract_pos_columns(columns):
 
 
 def plot_decoder_hd(
-    prefix,
+    prefix=None,
     save_dir=os.path.join("realtime_decoder", "output"),
     manager_label="state",
     postfix="bin_rec",
@@ -67,9 +81,17 @@ def plot_decoder_hd(
     upper=360.0,
     show=True,
     csv_path=None,
+    rank=None,
 ):
-    rec_path = _find_rec_file(save_dir, prefix, manager_label, postfix)
-    rank, num_digits = _parse_rank_and_digits(rec_path, manager_label, postfix)
+    rec_path = _find_rec_file(save_dir, prefix, manager_label, postfix, rank=rank)
+    if prefix is None:
+        prefix, rank, num_digits = _parse_prefix_rank_and_digits(
+            rec_path, manager_label, postfix
+        )
+    else:
+        _, rank, num_digits = _parse_prefix_rank_and_digits(
+            rec_path, manager_label, postfix
+        )
 
     reader = binary_record.BinaryRecordsFileReader(
         save_dir, prefix, rank, num_digits,
@@ -130,7 +152,18 @@ def main():
     parser = argparse.ArgumentParser(
         description="Plot decoded HD, real HD, and signed difference from a .rec file."
     )
-    parser.add_argument("prefix", help="Record file prefix (e.g. 20260207_225807_offline)")
+    parser.add_argument(
+        "prefix",
+        nargs="?",
+        default=None,
+        help="Record file prefix (omit to auto-detect if only one rec file exists)",
+    )
+    parser.add_argument(
+        "--rank",
+        type=int,
+        default=None,
+        help="Optional decoder rank to select a specific rec file",
+    )
     parser.add_argument(
         "--save-dir",
         default=os.path.join("realtime_decoder", "output"),
@@ -181,6 +214,7 @@ def main():
         upper=args.upper,
         show=True,
         csv_path=args.csv_path,
+        rank=args.rank,
     )
 
 
