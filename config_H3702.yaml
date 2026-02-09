@@ -35,7 +35,7 @@ encoder:
   mark_dim: 4
   vel_thresh: 2
   timings_bufsize: 50000   # ← new
-  bufsize: 50000
+  bufsize: 200000 # default 50000
   num_pos_points: 60
   use_channel_dist_from_max_amp: false   # ← add this
   position:
@@ -48,7 +48,7 @@ encoder:
     std: 12.0 # default 20
     use_filter: false
     n_std: 3
-    n_marks_min: 1
+    n_marks_min: 3 # default 1
 
 trode_selection:
   ripples: [0]
@@ -97,7 +97,6 @@ stimulation:
     well_loc: [[0, 0]]
 
 rank_settings:
-  #enable_rec: [0,1,3,4]
   enable_rec: [0,1,3,4]
 
 clusterless_decoder:

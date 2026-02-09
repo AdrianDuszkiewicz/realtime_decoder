@@ -911,6 +911,7 @@ class DecoderManager(base.BinaryRecordBase, base.MessageHandler):
             # no spikes in time bin. however the decoder can automatically
             # handle this case
             spikes_in_bin_count = 0
+            print(f"[DEBUG Decoder] No spikes in bin: lb={int(lb)} ub={int(ub)}")
             t0 = time.time_ns()
             posterior, likelihood = self._decoder.compute_posterior(
                 np.atleast_2d(self._spike_buf[spikes_in_bin_mask])
@@ -1078,4 +1079,3 @@ class DecoderProcess(base.RealtimeProcess):
 
         self._decoder_manager.finalize()
         self.class_log.info("Exited main loop")
-

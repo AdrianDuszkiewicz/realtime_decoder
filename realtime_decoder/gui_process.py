@@ -1457,7 +1457,9 @@ class DecodingResultsWindow(QMainWindow):
         self._data['lk'] = [np.zeros((B, N)) for _ in range(num_plots)]
         self._data['post'] = [np.zeros((B, N)) for _ in range(num_plots)]
         #self._data['state'] = [np.zeros((S, N)) for _ in range(num_plots)]
-        self._data['state'] = [np.zeros((3, N)) for _ in range(num_plots)] #ADRIAN
+        self._data['state'] = [np.zeros((4, N)) for _ in range(num_plots)] #ADRIAN
+        for ii in range(num_plots):
+            self._data['state'][ii][2, :] = np.nan
         self._data['diff'] = [np.zeros(N) for _ in range(num_plots)]
         self._data['ind'] = [0] * num_plots
 
@@ -1645,6 +1647,13 @@ class DecodingResultsWindow(QMainWindow):
             self._plot_items['state']['data'][ii].append(real_item)
             self._plots['state'][ii].addItem(real_item)
 
+            # add real HD trace for no-spike bins (red)
+            real_no_spike_item = pg.PlotDataItem(
+                np.zeros(self._num_time_bins), pen='r', width=2, name="Real HD (no spikes)"
+            )
+            self._plot_items['state']['data'][ii].append(real_no_spike_item)
+            self._plots['state'][ii].addItem(real_no_spike_item)
+
     def _setup_hd_diff_plots(self, num_plots):
         """Set up plots for decoded vs real head direction difference"""
 
@@ -1824,7 +1833,12 @@ class DecodingResultsWindow(QMainWindow):
 
         ind = self._data['ind'][plot_ind]
         self._data['state'][plot_ind][0, ind] = decoded_angle
-        self._data['state'][plot_ind][1, ind] = msg[0]['current_pos']  # real HD
+        if msg[0]['spike_count'] == 0:
+            self._data['state'][plot_ind][1, ind] = np.nan
+            self._data['state'][plot_ind][2, ind] = msg[0]['current_pos']  # real HD (no spikes)
+        else:
+            self._data['state'][plot_ind][1, ind] = msg[0]['current_pos']  # real HD
+            self._data['state'][plot_ind][2, ind] = np.nan
         raw_diff = decoded_angle - msg[0]['current_pos']
         self._data['diff'][plot_ind][ind] = ((raw_diff + 180) % 360) - 180
 
@@ -1866,7 +1880,7 @@ class DecodingResultsWindow(QMainWindow):
         #NOTE(DS): To plot the event trigger, use interval in linear position and make it to 1
         plot_ind = 0 # NOTE(DS): hardcoded but means the leftmost plot in the gui
         ind = self._data['ind'][plot_ind]
-        self._data['state'][plot_ind][2, :ind] = self._data['state'][plot_ind][2, :ind] + arm_event 
+        self._data['state'][plot_ind][3, :ind] = self._data['state'][plot_ind][3, :ind] + arm_event 
 
 
 
