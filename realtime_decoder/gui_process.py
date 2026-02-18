@@ -1767,6 +1767,9 @@ class DecodingResultsWindow(QMainWindow):
                 kind="information"
             )
             self.close()
+            app = QApplication.instance()
+            if app is not None:
+                app.quit()
         elif mpi_status.tag == messages.MPIMessageTag.POSTERIOR:
             self._update_lk_post_data(msg, mpi_status)
         elif mpi_status.tag == messages.MPIMessageTag.RIPPLE_DETECTION:

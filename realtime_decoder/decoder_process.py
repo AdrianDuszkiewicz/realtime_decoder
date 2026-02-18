@@ -443,6 +443,9 @@ class DecoderManager(base.BinaryRecordBase, base.MessageHandler):
         self._save_early = True
 
         self._spike_msg_ct = 0
+        self._last_spike_log_time = time.time()
+        self._last_spike_log_ct = 0
+        self._spike_log_interval = 1.0
 
         self._pos_ct = 0
         self._pos_timestamp = -1
@@ -611,6 +614,14 @@ class DecoderManager(base.BinaryRecordBase, base.MessageHandler):
 
 
         self._spike_msg_ct += 1
+        now = time.time()
+        if now - self._last_spike_log_time >= self._spike_log_interval:
+            delta = self._spike_msg_ct - self._last_spike_log_ct
+            rate = delta / (now - self._last_spike_log_time)
+            print(f"[DEBUG Decoder] Received spikes: total={self._spike_msg_ct}, "
+                  f"rate={rate:.1f}/s")
+            self._last_spike_log_time = now
+            self._last_spike_log_ct = self._spike_msg_ct
 
         # compute the dropped spikes percentage now since we are at the
         # head of the buffer (the index at which the next spike will be
@@ -958,13 +969,13 @@ class DecoderManager(base.BinaryRecordBase, base.MessageHandler):
         diff = (decoded_angle - true_angle + 180) % 360 - 180
         err = abs(diff)
         ts_seconds = timestamp / 20000.0
-        print(
-            f"[DEBUG Decoder] t={ts_seconds:.3f}s",
-            f"n_spikes={np.sum(spikes_in_bin_mask)}|",
-            f"Decoded HD={decoded_angle:.0f}°, "
-            f"true HD={true_angle:.0f}°, "
-            f"error={err:.1f}°"
-        )
+        #print(
+        #    f"[DEBUG Decoder] t={ts_seconds:.3f}s",
+        #    f"n_spikes={np.sum(spikes_in_bin_mask)}|",
+         #   f"Decoded HD={decoded_angle:.0f}°, "
+         #   f"true HD={true_angle:.0f}°, "
+        #    f"error={err:.1f}°"
+        #)
 
         # ADRIAN
         # print(f"[DEBUG Decoder] Bin: [{lb}, {ub}), "

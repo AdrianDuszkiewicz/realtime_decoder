@@ -31,7 +31,7 @@ openephys:
   lfp_addr: "tcp://127.0.0.1:1030"
 
 encoder:
-  spk_amp: 8 # default 10
+  spk_amp: 0 # default 10
   mark_dim: 4
   vel_thresh: 2
   timings_bufsize: 50000   # ← new
@@ -46,7 +46,7 @@ encoder:
     arm_coords: [ [ 0, 59] ]  # ← Nx2; covers all bins for HD, [0 59]
   mark_kernel:
     std: 12.0 # default 20
-    use_filter: false
+    use_filter: false # default false
     n_std: 3
     n_marks_min: 3 # default 1
 
@@ -104,13 +104,13 @@ clusterless_decoder:
   state_labels: ['hd']
 
 decoder:
-  bufsize: 2000
+  bufsize: 4000
   timings_bufsize: 50000
   cred_int_bufsize: 10
   num_pos_points: 60 #10
   time_bin:
     samples: 4000
-    delay_samples: 100
+    delay_samples: 1000
 
 process_monitor:
   interval: 0   # seconds
@@ -181,4 +181,3 @@ display:
     lfp: 100000
 
   openephys:
-

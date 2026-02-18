@@ -364,6 +364,10 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
                 "SpikePosJointProb", config=config
             )
         )
+        self._sent_spike_ct = 0
+        self._last_sent_log_time = time.time()
+        self._last_sent_log_ct = 0
+        self._sent_log_interval = 1.0
 
         # key for these dictionaries is elec_grp_id
         self._spk_counters = {}
@@ -533,6 +537,15 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
                 self._spike_msg[0]['hist'] = joint_prob_obj.hist
                 self._spike_msg[0]['send_time'] = time.time_ns()
                 t_start_enc_send = self._spike_msg['send_time']
+                self._sent_spike_ct += 1
+                now = time.time()
+                if now - self._last_sent_log_time >= self._sent_log_interval:
+                    delta = self._sent_spike_ct - self._last_sent_log_ct
+                    rate = delta / (now - self._last_sent_log_time)
+                    print(f"[DEBUG Encoder] Sent spikes: total={self._sent_spike_ct}, "
+                          f"rate={rate:.1f}/s")
+                    self._last_sent_log_time = now
+                    self._last_sent_log_ct = self._sent_spike_ct
                 self.send_interface.send_joint_prob(decoder_rank, self._spike_msg)
                 t_end_enc_send = time.time_ns()
 
