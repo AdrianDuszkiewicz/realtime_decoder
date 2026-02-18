@@ -9,6 +9,37 @@ import matplotlib.pyplot as plt
 from realtime_decoder import binary_record
 
 
+def _resolve_save_dir(save_dir):
+    """Resolve common relative save_dir variants to an existing directory."""
+    if save_dir is None:
+        save_dir = "output"
+
+    expanded = os.path.expanduser(save_dir)
+    candidates = []
+
+    def _add(path):
+        if path and path not in candidates:
+            candidates.append(path)
+
+    _add(expanded)
+    _add(os.path.abspath(expanded))
+
+    normalized = expanded.replace("\\", "/")
+    legacy_prefix = "realtime_decoder/output/"
+    if normalized == "realtime_decoder/output":
+        _add("output")
+        _add(os.path.abspath("output"))
+    elif normalized.startswith(legacy_prefix):
+        _add(normalized[len("realtime_decoder/"):])
+        _add(os.path.abspath(normalized[len("realtime_decoder/"):]))
+
+    for path in candidates:
+        if os.path.isdir(path):
+            return path
+
+    return expanded
+
+
 def _find_rec_file(save_dir, prefix, manager_label, postfix, rank=None):
     if prefix:
         if rank is None:
@@ -22,8 +53,18 @@ def _find_rec_file(save_dir, prefix, manager_label, postfix, rank=None):
             pattern = os.path.join(save_dir, f"*.{rank}.{manager_label}.{postfix}")
     matches = sorted(glob.glob(pattern))
     if not matches:
+        available = []
+        if os.path.isdir(save_dir):
+            available = sorted(
+                f for f in os.listdir(save_dir)
+                if f.endswith(f".{manager_label}.{postfix}")
+            )
+        details = (
+            f" Available {manager_label}.{postfix} files: {available[:5]}"
+            if available else ""
+        )
         raise FileNotFoundError(
-            f"No rec files found for pattern: {pattern}"
+            f"No rec files found for pattern: {pattern}.{details}"
         )
     if prefix is None and len(matches) > 1:
         raise ValueError(
@@ -73,7 +114,7 @@ def _extract_pos_columns(columns):
 
 def plot_decoder_hd(
     prefix=None,
-    save_dir=os.path.join("realtime_decoder", "output"),
+    save_dir="output",
     manager_label="state",
     postfix="bin_rec",
     sampling_rate=20000.0,
@@ -83,6 +124,7 @@ def plot_decoder_hd(
     csv_path=None,
     rank=None,
 ):
+    save_dir = _resolve_save_dir(save_dir)
     rec_path = _find_rec_file(save_dir, prefix, manager_label, postfix, rank=rank)
     if prefix is None:
         prefix, rank, num_digits = _parse_prefix_rank_and_digits(
@@ -167,8 +209,8 @@ def main():
     )
     parser.add_argument(
         "--save-dir",
-        default=os.path.join("realtime_decoder", "output"),
-        help="Directory containing the .rec files (default: realtime_decoder/output)"
+        default="output",
+        help="Directory containing the .rec files (default: output)"
     )
     parser.add_argument(
         "--manager-label",

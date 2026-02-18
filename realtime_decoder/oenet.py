@@ -144,8 +144,8 @@ class OEClient:
     # MAKE SURE THE ADDRESS MATCHES THAT IN OPENEPHYS FALCON
     def __init__(
             self,
-            addr="tcp://127.0.0.1:5557",
-            lfp_addr="tcp://127.0.0.1:5555",
+            event_broadcaster_port=5557,
+            falcon_output_port=5555,
             sample_rate=20000,
             csv_path=None,
     ):
@@ -155,16 +155,18 @@ class OEClient:
             load_hd_csv(csv_path)
 
         ctx = zmq.Context.instance()
+        event_broadcaster_addr = f"tcp://127.0.0.1:{event_broadcaster_port}"
+        falcon_output_addr = f"tcp://127.0.0.1:{falcon_output_port}"
 
         # spikes/TTL
         self.socket = ctx.socket(zmq.SUB)
-        self.socket.connect(addr)
+        self.socket.connect(event_broadcaster_addr)
         self.socket.setsockopt_string(zmq.SUBSCRIBE, "")
         self.socket.setsockopt(zmq.RCVHWM, 10)
 
         # LFP
         self.lfp_socket = ctx.socket(zmq.SUB)
-        self.lfp_socket.connect(lfp_addr)
+        self.lfp_socket.connect(falcon_output_addr)
         self.lfp_socket.setsockopt_string(zmq.SUBSCRIBE, "")
         self.lfp_socket.setsockopt(zmq.RCVHWM, 10)
 
@@ -242,11 +244,12 @@ class OEDataReceiver(DataSourceReceiver):
             raise TypeError(f"Invalid datatype {datatype}")
         super().__init__(comm, rank, config, datatype)
 
+        openephys_config = config["openephys"]
         self.client = OEClient(
-            addr=config["openephys"].get("addr", "tcp://127.0.0.1:5557"),
-            lfp_addr=config["openephys"].get("lfp_addr", "tcp://127.0.0.1:5555"),
+            event_broadcaster_port=openephys_config["event_broadcaster_port"],
+            falcon_output_port=openephys_config["falcon_output_port"],
             sample_rate=config["sampling_rate"]["spikes"],
-            csv_path=config["openephys"].get("csv_path"),
+            csv_path=openephys_config.get("csv_path"),
         )
 
         self.start = True

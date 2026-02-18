@@ -454,8 +454,14 @@ class BinaryRecordsFileReader(logging_base.LoggingClass):
                         if isinstance(table[col_name].iloc[0], bytes):
                             table[col_name] = table[col_name].apply(self._bytes_to_string)
 
+        def _to_numeric_if_possible(series):
+            try:
+                return pd.to_numeric(series)
+            except (ValueError, TypeError):
+                return series
+
         panda_numeric_frames = {
-            key: df.apply(pd.to_numeric, errors='ignore')
+            key: df.apply(_to_numeric_if_possible)
             for key, df in panda_frames.items()
         }
 

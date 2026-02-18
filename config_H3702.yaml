@@ -1,8 +1,8 @@
 rank:
   supervisor: [0]
   gui: [2]
-  encoders: [4]
-  #encoders: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+  #encoders: [4]
+  encoders: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
   decoders: [1]
   ripples: [3]
 
@@ -24,11 +24,11 @@ openephys:
   instructive_file: dummy_instructive.txt
   #csv_path: '/home/adrian/EphysData/A3707-200318/OpenEphys2/Tracking.csv'
   #csv_path: '/home/adrian/EphysData/A3706-200313/OpenEphys2/Tracking.csv'
-  csv_path: '/home/adrian/EphysData/A3702-191128/OpenEphys2/Tracking.csv'
+  csv_path: '/media/du_lab/DATA/H3700_decoder/A3702-191128/OpenEphys2/Tracking.csv'
 
   voltage_scaling_factor: 1
-  addr: "tcp://127.0.0.1:1026"
-  lfp_addr: "tcp://127.0.0.1:1030"
+  event_broadcaster_port: 1111
+  falcon_output_port: 1100
 
 encoder:
   spk_amp: 0 # default 10
@@ -36,14 +36,14 @@ encoder:
   vel_thresh: 2
   timings_bufsize: 50000   # ← new
   bufsize: 200000 # default 50000
-  num_pos_points: 60
+  num_pos_points: 360 #60
   use_channel_dist_from_max_amp: false   # ← add this
   position:
-    num_bins: 60   # required by Posterior message dtype
+    num_bins: 360   # required by Posterior message dtype, 60
     lower: 0
     upper: 360 #1
     arm_ids: [ 0 ]        # ← must be list of ints
-    arm_coords: [ [ 0, 59] ]  # ← Nx2; covers all bins for HD, [0 59]
+    arm_coords: [ [ 0, 359] ]  # ← Nx2; covers all bins for HD, [0 59]
   mark_kernel:
     std: 12.0 # default 20
     use_filter: false # default false
@@ -107,7 +107,7 @@ decoder:
   bufsize: 4000
   timings_bufsize: 50000
   cred_int_bufsize: 10
-  num_pos_points: 60 #10
+  num_pos_points: 360 #60
   time_bin:
     samples: 4000
     delay_samples: 1000

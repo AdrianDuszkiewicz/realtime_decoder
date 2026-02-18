@@ -176,9 +176,11 @@ def setup(config_path, numprocs):
     
     if rank in config['rank']['supervisor']:
         stim_decider = DummyStimDecider()
+        openephys_config = config["openephys"]
         oe_client = oenet.OEClient(
-            config["openephys"].get("addr", "tcp://127.0.0.1:5557"),
-            csv_path=config["openephys"].get("csv_path"),
+            event_broadcaster_port=openephys_config["event_broadcaster_port"],
+            falcon_output_port=openephys_config["falcon_output_port"],
+            csv_path=openephys_config.get("csv_path"),
         )
         process = main_process.MainProcess(
             comm, rank, config, stim_decider, oe_client

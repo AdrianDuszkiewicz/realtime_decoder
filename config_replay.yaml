@@ -16,7 +16,7 @@ algorithm: "clusterless_decoder"
 datasource: "openephys"    # still required but ignored when skipping
 num_setup_messages: 50
 preloaded_model: false
-frozen_model: false
+frozen_model: falseopope
 
 openephys:
   config_file: dummy.trodesconf
@@ -24,11 +24,11 @@ openephys:
   instructive_file: dummy_instructive.txt
   #csv_path: '/home/adrian/EphysData/A3707-200318/OpenEphys2/Tracking.csv'
   #csv_path: '/home/adrian/EphysData/A3706-200313/OpenEphys2/Tracking.csv'
-  csv_path: '/home/adrian/EphysData/A3702-191128/OpenEphys2/Tracking.csv'
+  csv_path: '/media/du_lab/DATA/H3700_decoder/A3702-191128/OpenEphys2/Tracking.csv'
 
   voltage_scaling_factor: 1
-  addr: "tcp://127.0.0.1:1026"
-  lfp_addr: "tcp://127.0.0.1:1025"
+  event_broadcaster_port: 1026
+  falcon_output_port: 1025
 
 encoder:
   spk_amp: 10

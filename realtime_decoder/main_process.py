@@ -178,6 +178,10 @@ class MainManager(base.MessageHandler):
 
         self._set_up_ranks = []
         self._all_ranks_set_up = False
+        self._rank_registration_last_msg_ts = {}
+        self._record_setup_timeout_s = self._config.get(
+            'record_setup_complete_timeout_s', 2.0
+        )
 
         # stim decider bypasses the normal record registration message sending
         for message in stim_decider.get_records():
@@ -212,6 +216,7 @@ class MainManager(base.MessageHandler):
                 f"BinaryRecordType received for rec id {msg.rec_id} from rank {source_rank}"
             )
             self._rec_manager.register_rec_type_message(msg)
+            self._rank_registration_last_msg_ts[source_rank] = time.time()
 
         elif isinstance(msg, messages.BinaryRecordSendComplete):
             self._update_all_rank_setup_status(source_rank)
@@ -355,16 +360,47 @@ class MainManager(base.MessageHandler):
 
         self._send_interface.send_decoder_started()
 
-    def _update_all_rank_setup_status(self, source_rank):
+    def _update_all_rank_setup_status(self, source_rank, *, inferred=False):
         """Update list keeping track of which ranks have registered
         the type of data they can record to disk"""
 
-        self.class_log.debug(f"Record registration complete for rank {source_rank}")
+        if source_rank in self._set_up_ranks:
+            return
+
+        if inferred:
+            self.class_log.warning(
+                f"Inferred record registration complete for rank {source_rank} "
+                f"after {self._record_setup_timeout_s:.2f}s timeout waiting for "
+                "BinaryRecordSendComplete"
+            )
+        else:
+            self.class_log.debug(f"Record registration complete for rank {source_rank}")
         self._set_up_ranks.append(source_rank)
         if sorted(self._set_up_ranks) == self._ranks_sending_recs:
             self._all_ranks_set_up = True
             self.class_log.debug(
                 f"Received from {self._set_up_ranks}, expected {self._ranks_sending_recs}")
+
+    def maybe_infer_rank_setup_complete(self):
+        """Fallback for environments where BinaryRecordSendComplete can be missed.
+
+        If we already saw one or more BinaryRecordType messages from a rank and
+        no registration traffic has arrived for that rank for a timeout window,
+        infer completion for that rank.
+        """
+
+        if self._all_ranks_set_up:
+            return
+
+        now = time.time()
+        for rank in self._ranks_sending_recs:
+            if rank in self._set_up_ranks:
+                continue
+            last_ts = self._rank_registration_last_msg_ts.get(rank)
+            if last_ts is None:
+                continue
+            if now - last_ts >= self._record_setup_timeout_s:
+                self._update_all_rank_setup_status(rank, inferred=True)
 
     def finalize(self):
         """Final method called before exiting the main data processing loop"""
@@ -483,6 +519,7 @@ class MainProcess(base.RealtimeProcess):
                 self._vel_pos_recv.receive()
                 self._posterior_recv.receive()
                 self._gui_params_recv.receive()
+                self._main_manager.maybe_infer_rank_setup_complete()
 
                 if check_user_input and self._main_manager.all_ranks_set_up:
                     print("***************************************", flush=True)
@@ -549,5 +586,3 @@ class MainProcess(base.RealtimeProcess):
                 )
 
         return is_ok, alive_ranks
-
-

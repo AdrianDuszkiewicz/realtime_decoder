@@ -11,6 +11,7 @@ realtime_decoder/logging_base.py
 realtime_decoder/main_process.py
 realtime_decoder/merge_rec.py
 realtime_decoder/messages.py
+realtime_decoder/oenet.py
 realtime_decoder/position.py
 realtime_decoder/ripple_process.py
 realtime_decoder/stimulation.py
@@ -24,3 +25,8 @@ realtime_decoder.egg-info/SOURCES.txt
 realtime_decoder.egg-info/dependency_links.txt
 realtime_decoder.egg-info/requires.txt
 realtime_decoder.egg-info/top_level.txt
+realtime_decoder/scripts/__init__.py
+realtime_decoder/scripts/plot_decoder_hd.py
+scripts/__init__.py
+scripts/plot_decoder_hd.py
+scripts/test_connection.py
