@@ -234,6 +234,7 @@ class RippleManager(base.BinaryRecordBase, base.MessageHandler):
 
         self._lfp_count = 0
         self._lfp_timestamp = -1
+        self._last_decoder_tick_timestamp = None
 
         self._current_vel = 0
         self._pos_timestamp = -1
@@ -402,12 +403,19 @@ class RippleManager(base.BinaryRecordBase, base.MessageHandler):
                 self._lockout_sample[trode], is_consensus
             )
 
-        # send timestamp to decoder for timekeeping
-        if (
-            self.p['send_lfp_timestamp'] and
-            self._lfp_count % self.p['lfp_samples_per_time_bin'] == 0
-        ):
-            self._update_decoder()
+        # Send decoder tick(s) based on timestamp-domain bin width, not packet count.
+        # This is robust to variable LFP packetization/chunk sizes.
+        if self.p['send_lfp_timestamp']:
+            if self._last_decoder_tick_timestamp is None:
+                self._last_decoder_tick_timestamp = msg_timestamp
+                self._update_decoder(timestamp=msg_timestamp)
+            else:
+                while (
+                    msg_timestamp - self._last_decoder_tick_timestamp >=
+                    self.p['decoder_time_bin_samples']
+                ):
+                    self._last_decoder_tick_timestamp += self.p['decoder_time_bin_samples']
+                    self._update_decoder(timestamp=self._last_decoder_tick_timestamp)
 
         if self._lfp_count % self.p['num_lfp_disp'] == 0:
             self.class_log.debug(f"Received {self._lfp_count} lfp points")
@@ -688,11 +696,12 @@ class RippleManager(base.BinaryRecordBase, base.MessageHandler):
 
         return 0, False, False, False
 
-    def _update_decoder(self):
+    def _update_decoder(self, timestamp=None):
         """Notify decoder of a new time bin edge/boundary"""
 
-        # self.class_log.info(f"Sending timestamp {self._lfp_timestamp}")
-        self.send_interface.send_lfp_timestamp(self._lfp_timestamp)
+        if timestamp is None:
+            timestamp = self._lfp_timestamp
+        self.send_interface.send_lfp_timestamp(int(timestamp))
 
     def _reset_data(self, trodes:List):
         """Reset data keeping track of ripple events"""
@@ -765,7 +774,7 @@ class RippleManager(base.BinaryRecordBase, base.MessageHandler):
         the time bin size is a configurable option"""
 
         #ADRIAN DEBUG: HARDCODE TO 1 LFP sample
-        hardcode = True
+        hardcode = False
         if hardcode:
             n_lfp_samples = 1
         else:
@@ -848,6 +857,7 @@ class RippleManager(base.BinaryRecordBase, base.MessageHandler):
 
         self.p['timings_bufsize'] = self._config['ripples']['timings_bufsize']
         self.p['send_lfp_timestamp'] = (self.rank == self._config['rank']['ripples'][0])
+        self.p['decoder_time_bin_samples'] = self._config['decoder']['time_bin']['samples']
         self.p['lfp_samples_per_time_bin'] = self._compute_lfp_send_interval()
         self.p['max_ripple_samples'] = self._config["ripples"]["max_ripple_samples"]
         self.p['num_lfp_disp'] = self._config['display']['ripples']['lfp']
