@@ -39,16 +39,16 @@ encoder:
   vel_thresh: 2
   timings_bufsize: 50000   # ← new
   bufsize: 200000 # default 50000
-  num_pos_points: 120 #60
+  num_pos_points: 60 #60
   use_channel_dist_from_max_amp: false   # ← add this
   position:
-    num_bins: 120   # required by Posterior message dtype, 60
+    num_bins: 60   # required by Posterior message dtype, 60
     lower: 0
     upper: 360 #1
     arm_ids: [ 0 ]        # ← must be list of ints
-    arm_coords: [ [ 0, 119] ]  # ← Nx2; covers all bins for HD, [0 59]
+    arm_coords: [ [ 0, 59] ]  # ← Nx2; covers all bins for HD, [0 59]
   mark_kernel:
-    std: 24.0 # default 20
+    std: 12.0 # default 20
     use_filter: false # default false
     n_std: 3
     n_marks_min: 3 # default 1
@@ -62,7 +62,7 @@ decoder:
   bufsize: 4000
   timings_bufsize: 50000
   cred_int_bufsize: 10
-  num_pos_points: 120 #60
+  num_pos_points: 60 #60
   time_bin:
     samples: 4000
     delay_samples: 1000
@@ -121,7 +121,7 @@ gui:
   colormap: 'viridis'
   send_interval: 0
   refresh_rate: 25
-  trace_length: 20
+  trace_length: 60   # modify the length of the window
   state_colors: ['#4c72b0']
   num_xticks: 5
   likelihood:

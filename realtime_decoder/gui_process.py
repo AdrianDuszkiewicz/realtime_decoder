@@ -1,8 +1,8 @@
+import os
 import time
 import logging
 import numpy as np
 import seaborn as sns
-import pyqtgraph as pg
 
 from collections import OrderedDict
 from mpi4py import MPI
@@ -17,6 +17,10 @@ from PyQt5.QtWidgets import (
     QPushButton, QLabel, QSpinBox, QSlider, QStatusBar,
     QFileDialog, QMessageBox, QRadioButton, QTextEdit, QStatusBar
 )
+
+# Ensure pyqtgraph binds to the same Qt backend as the rest of this module.
+os.environ.setdefault("PYQTGRAPH_QT_LIB", "PyQt5")
+import pyqtgraph as pg
 
 from realtime_decoder import base, messages
 

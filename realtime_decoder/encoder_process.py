@@ -535,8 +535,8 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
                 self._spike_msg[0]['current_pos'] = self._current_pos
                 self._spike_msg[0]['cred_int'] = cred_int
                 self._spike_msg[0]['hist'] = joint_prob_obj.hist
-                self._spike_msg[0]['send_time'] = time.time_ns()
-                t_start_enc_send = self._spike_msg['send_time']
+                t_start_enc_send = int(time.time_ns())
+                self._spike_msg[0]['send_time'] = t_start_enc_send
                 self._sent_spike_ct += 1
                 now = time.time()
                 if now - self._last_sent_log_time >= self._sent_log_interval:
@@ -771,16 +771,26 @@ class EncoderManager(base.BinaryRecordBase, base.MessageHandler):
                 )
             ))
 
+        def _to_i8_scalar(val):
+            arr = np.asarray(val)
+            if arr.ndim == 0:
+                return int(arr)
+            if arr.size == 1:
+                return int(arr.reshape(()))
+            raise ValueError(
+                f"Expected scalar timing value, got shape {arr.shape}"
+            )
+
         # write to timings array
         tarr = self._times[trode]
-        tarr[ind]['elec_grp_id'] = trode
-        tarr[ind]['timestamp'] = timestamp
-        tarr[ind]['t_send_data'] = t_send_data
-        tarr[ind]['t_recv_data'] = t_recv_data
-        tarr[ind]['t_start_kde'] = t_start_kde
-        tarr[ind]['t_end_kde'] = t_end_kde
-        tarr[ind]['t_start_enc_send'] = t_start_enc_send
-        tarr[ind]['t_end_enc_send'] = t_end_enc_send
+        tarr[ind]['elec_grp_id'] = _to_i8_scalar(trode)
+        tarr[ind]['timestamp'] = _to_i8_scalar(timestamp)
+        tarr[ind]['t_send_data'] = _to_i8_scalar(t_send_data)
+        tarr[ind]['t_recv_data'] = _to_i8_scalar(t_recv_data)
+        tarr[ind]['t_start_kde'] = _to_i8_scalar(t_start_kde)
+        tarr[ind]['t_end_kde'] = _to_i8_scalar(t_end_kde)
+        tarr[ind]['t_start_enc_send'] = _to_i8_scalar(t_start_enc_send)
+        tarr[ind]['t_end_enc_send'] = _to_i8_scalar(t_end_enc_send)
         self._times_ind[trode] += 1
 
     def _save_timings(self):
