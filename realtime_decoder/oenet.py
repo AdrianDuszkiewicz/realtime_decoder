@@ -252,6 +252,7 @@ class OEDataReceiver(DataSourceReceiver):
             csv_path=openephys_config.get("csv_path"),
         )
 
+        self._channels = set()
         self.start = True
 
     def __next__(self):
@@ -261,6 +262,9 @@ class OEDataReceiver(DataSourceReceiver):
         if self.datatype == Datatypes.SPIKES:
             ev = self.client.next_event()   # from Event Broadcaster
             if isinstance(ev, dict) and "source_elec" in ev:
+                # Only forward spikes for channels assigned to this rank.
+                if self._channels and ev["source_elec"] not in self._channels:
+                    return None
                 #print(f"[OEDataReceiver] Waveform shape: {ev["waveforms"].shape}")
                 #print(f"[OEDataReceiver] Got spike from source_elec={ev['source_elec']}, sample_num={ev['sample_num']}")
                 return SpikePoint(
@@ -310,7 +314,9 @@ class OEDataReceiver(DataSourceReceiver):
 
         return None
 
-    def register_datatype_channel(self, datatype, channel=None):
+    def register_datatype_channel(self, channel):
+        if self.datatype in (Datatypes.SPIKES, Datatypes.LFP):
+            self._channels.add(int(channel))
         return
 
     def activate(self):

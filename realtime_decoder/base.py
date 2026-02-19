@@ -296,7 +296,10 @@ class BinaryRecordBase(LoggingClass, metaclass=ABCMeta):
             self._rec_writer.write_rec(rec_id, *args)
             return True
         else:
-            print(f"rec_id: {rec_id}, _rec_writer: {self._rec_writer}, _rec_writer.is_open: {self._rec_writer.is_open}")
+            self.class_log.warning(
+                "Skipping write for rec_id %s: record writer not initialized or not open",
+                rec_id,
+            )
         return False
     
 

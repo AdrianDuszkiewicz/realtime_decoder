@@ -1,10 +1,13 @@
 rank:
   supervisor: [0]
   gui: [2]
-  encoders: [4]
-  #encoders: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+  #encoders: [4]
+  encoders: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
   decoders: [1]
   ripples: [3]
+
+rank_settings:
+  enable_rec: [ 0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 
 files:
   output_dir: ./output
@@ -36,16 +39,16 @@ encoder:
   vel_thresh: 2
   timings_bufsize: 50000   # ← new
   bufsize: 200000 # default 50000
-  num_pos_points: 360 #60
+  num_pos_points: 120 #60
   use_channel_dist_from_max_amp: false   # ← add this
   position:
-    num_bins: 360   # required by Posterior message dtype, 60
+    num_bins: 120   # required by Posterior message dtype, 60
     lower: 0
     upper: 360 #1
     arm_ids: [ 0 ]        # ← must be list of ints
-    arm_coords: [ [ 0, 359] ]  # ← Nx2; covers all bins for HD, [0 59]
+    arm_coords: [ [ 0, 119] ]  # ← Nx2; covers all bins for HD, [0 59]
   mark_kernel:
-    std: 12.0 # default 20
+    std: 24.0 # default 20
     use_filter: false # default false
     n_std: 3
     n_marks_min: 3 # default 1
@@ -55,6 +58,18 @@ trode_selection:
   decoding: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
   #decoding: [0,1,2,3]
 
+decoder:
+  bufsize: 4000
+  timings_bufsize: 50000
+  cred_int_bufsize: 10
+  num_pos_points: 120 #60
+  time_bin:
+    samples: 4000
+    delay_samples: 1000
+
+clusterless_decoder:
+  transmat_bias: 1
+  state_labels: ['hd']
 
 decoder_assignment:
   # key is the decoder rank. the list consists of
@@ -96,21 +111,7 @@ stimulation:
     within_angle_range: 25
     well_loc: [[0, 0]]
 
-rank_settings:
-  enable_rec: [0,1,3,4]
 
-clusterless_decoder:
-  transmat_bias: 1
-  state_labels: ['hd']
-
-decoder:
-  bufsize: 4000
-  timings_bufsize: 50000
-  cred_int_bufsize: 10
-  num_pos_points: 360 #60
-  time_bin:
-    samples: 4000
-    delay_samples: 1000
 
 process_monitor:
   interval: 0   # seconds
