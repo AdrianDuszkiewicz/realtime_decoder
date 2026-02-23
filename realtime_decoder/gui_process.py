@@ -1367,6 +1367,8 @@ class DecodingResultsWindow(QMainWindow):
 
         self._ok_to_terminate = False
         self._last_ripple_power = np.nan
+        # Optional behavior: clear traces/images when the time axis wraps.
+        self._clear_on_wrap = True
 
     def _setup_interfaces(self, comm, rank, config):
         """Set up interfaces used to receive MPI messages"""
@@ -1466,6 +1468,7 @@ class DecodingResultsWindow(QMainWindow):
             self._data['state'][ii][2, :] = np.nan
         self._data['diff'] = [np.zeros(N) for _ in range(num_plots)]
         self._data['ind'] = [0] * num_plots
+        self._wrapped_once = [False] * num_plots
 
         # used for likelihood/posterior plots
         bin_edges = np.linspace(
@@ -1653,7 +1656,7 @@ class DecodingResultsWindow(QMainWindow):
 
             # add real HD trace for no-spike bins (red)
             real_no_spike_item = pg.PlotDataItem(
-                np.zeros(self._num_time_bins), pen='r', width=2, name="Real HD (no spikes)"
+                np.zeros(self._num_time_bins), pen='r', width=2, name="no spikes"
             )
             self._plot_items['state']['data'][ii].append(real_no_spike_item)
             self._plots['state'][ii].addItem(real_no_spike_item)
@@ -1666,7 +1669,7 @@ class DecodingResultsWindow(QMainWindow):
 
             self._plots['diff'][ii] = self._graphics_widget.addPlot(
                 4, ii, 1, 1,
-                title=f'HD Diff (Rank {dec_rank})',
+                title=f'Decoder Error (Rank {dec_rank})',
                 labels={
                     'left': 'Diff (deg)',
                     'bottom': 'Time (sec)',
@@ -1677,7 +1680,7 @@ class DecodingResultsWindow(QMainWindow):
             self._set_y_ticks(self._plots['diff'][ii], -180, 180, 90)
 
             diff_item = pg.PlotDataItem(
-                np.zeros(self._num_time_bins), pen='m', width=2, name="HD Diff"
+                np.zeros(self._num_time_bins), pen='g', width=2, name="HD Diff"
             )
             self._plot_items['diff']['data'][ii] = diff_item
             self._plots['diff'][ii].addItem(diff_item)
@@ -1801,6 +1804,12 @@ class DecodingResultsWindow(QMainWindow):
         assert sender == msg[0]['rank']
         
         ind = self._data['ind'][plot_ind]
+        if self._clear_on_wrap and ind == 0 and self._wrapped_once[plot_ind]:
+            # Start a fresh trace when the x-axis wraps.
+            self._data['lk'][plot_ind][:, :] = 0.0
+            self._data['post'][plot_ind][:, :] = 0.0
+            self._data['state'][plot_ind][:, :] = np.nan
+            self._data['diff'][plot_ind][:] = np.nan
 
         # update data
         self._data['lk'][plot_ind][:, ind] = (
@@ -1854,10 +1863,10 @@ class DecodingResultsWindow(QMainWindow):
 
 
         # update index for next data point to be stored at
-        self._data['ind'][plot_ind] = (
-            (self._data['ind'][plot_ind] + 1) %
-            self._num_time_bins
-        )
+        next_ind = (self._data['ind'][plot_ind] + 1) % self._num_time_bins
+        if next_ind == 0:
+            self._wrapped_once[plot_ind] = True
+        self._data['ind'][plot_ind] = next_ind
 
 
 
